@@ -87,7 +87,8 @@ object NotificationParser {
             if (call != null) put(sbn.key, call) else remove(sbn.key)
         }
 
-        val ticking = ex.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) && n.`when` > 0
+        val samsung = if (!isMedia && ClockApps.isClock(context, sbn.packageName)) SamsungTimer.read(context, n) else null
+        val ticking = (ex.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) && n.`when` > 0) || samsung != null
         // Кнопки «Часов» (пауза, продолжить, сброс) — их нажимают кнопки острова
         val clock = ClockApps.isClock(context, sbn.packageName)
         val buttons = if (clock) ClockWords.buttons(n.actions) else emptyMap()
@@ -104,12 +105,12 @@ object NotificationParser {
         if (pausedMs != null && chrono) ClockControl.dropPausedLater(sbn.key)
         IslandBus.chrono.value = IslandBus.chrono.value.toMutableMap().apply {
             if (chrono) {
-                val down = if (pausedMs != null) looksLikeTimer(n, title) else ex.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false)
+                val down = if (pausedMs != null) looksLikeTimer(n, title) else samsung?.second ?: ex.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false)
                 val stop = n.actions?.firstOrNull { a ->
                     val t = a.title?.toString()?.lowercase().orEmpty()
                     listOf("стоп", "останов", "заверш", "stop", "finish").any { it in t }
                 }?.actionIntent
-                put(sbn.key, ChronoInfo(sbn.key, sbn.packageName, title, icon(context, sbn.packageName), n.`when`, down, sbn.postTime, stop,
+                put(sbn.key, ChronoInfo(sbn.key, sbn.packageName, title, icon(context, sbn.packageName), samsung?.first ?: n.`when`, down, sbn.postTime, stop,
                     pausedMs = pausedMs, pause = buttons[ClockAction.PAUSE], resume = buttons[ClockAction.START],
                     reset = buttons[ClockAction.RESET]))
             } else {
@@ -283,3 +284,27 @@ private val HangUpWords = listOf(
     "encerrar", "วางสาย", "kapat", "auflegen", "beenden", "raccrocher", "riaggancia", "zakończ", "завершити", "ibaba",
     "挂断", "掛斷", "終了", "종료",
 )
+
+/** One UI 8: таймер «Часов» рисует отсчёт в своём RemoteViews, а не в стандартных полях уведомления. */
+object SamsungTimer {
+    private const val KEY = "android.ongoingActivityNoti.chronometerRemoteView"
+
+    /** Пара: время (мс по часам стены), от которого или до которого идёт отсчёт, и считает ли он вниз. null — не найдено. */
+    fun read(context: Context, n: Notification): Pair<Long, Boolean>? = runCatching {
+        @Suppress("DEPRECATION")
+        val rv = n.extras.getParcelable<android.widget.RemoteViews>(KEY) ?: return@runCatching null
+        val root = rv.apply(context, android.widget.FrameLayout(context))
+        find(root)?.let { c ->
+            val wall = System.currentTimeMillis() + (c.base - android.os.SystemClock.elapsedRealtime())
+            wall to c.isCountDown
+        }
+    }.getOrNull()
+
+    private fun find(v: android.view.View): android.widget.Chronometer? {
+        if (v is android.widget.Chronometer) return v
+        if (v is android.view.ViewGroup) {
+            for (i in 0 until v.childCount) find(v.getChildAt(i))?.let { return it }
+        }
+        return null
+    }
+}
