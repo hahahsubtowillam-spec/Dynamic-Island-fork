@@ -180,6 +180,7 @@ data class IslandSettings(
     val outlineColor: Long = 0xFF3A3A40,
     val outlineWidth: Float = 1f,
     val outlineFromArt: Boolean = true,
+    val outlineAuto: Boolean = false,
     val shadow: Boolean = false,
 
     // Цвет кнопок в карточке уведомления

@@ -2,6 +2,7 @@
 
 package com.akira.island.ui.screens
 
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,7 +65,12 @@ fun ColorsScreen(onBack: () -> Unit) {
 
         SectionHeader(tr("Контур", "Outline"))
         Group {
-            GroupToggle(Pos.First, Icons.Rounded.BorderStyle, tr("Контур", "Outline"),
+            GroupToggle(Pos.First, Icons.Rounded.AutoAwesome, tr("Автоконтур", "Outline automator"),
+                tr("Включает контур, когда остров сливается с фоном", "Turns the outline on when the island blends into the background"),
+                s.outlineAuto, color = Tile.Indigo) { v ->
+                SettingsRepo.update { copy(outlineAuto = v) }
+            }
+            GroupToggle(Pos.Middle, Icons.Rounded.BorderStyle, tr("Контур", "Outline"),
                 tr("Тонкая обводка вокруг капсулы", "A thin line around the capsule"),
                 s.outline, color = Tile.Gray) { v ->
                 SettingsRepo.update { copy(outline = v) }
