@@ -1,0 +1,51 @@
+name: Test APK (side-by-side)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["fix/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  test-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Switch to test app ID (CI only)
+        run: |
+          sed -i 's/applicationId = "com.akira.island"/applicationId = "com.akira.island.test"/' app/build.gradle.kts
+          grep -n 'applicationId' app/build.gradle.kts
+
+      - name: Build
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Sign with throwaway key
+        run: |
+          set -e
+          ks="$RUNNER_TEMP/test.jks"
+          keytool -genkeypair -keystore "$ks" -storepass testpass123 -keypass testpass123 \
+            -alias test -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Test"
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          mkdir -p out
+          "$bt/zipalign" -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+          "$bt/apksigner" sign --ks "$ks" --ks-pass pass:testpass123 --key-pass pass:testpass123 \
+            --out out/DynamicIslandTest.apk "$RUNNER_TEMP/aligned.apk"
+          "$bt/apksigner" verify --verbose --print-certs out/DynamicIslandTest.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DynamicIslandTest-apk
+          path: out/DynamicIslandTest.apk
+          retention-days: 7
