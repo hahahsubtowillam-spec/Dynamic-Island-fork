@@ -533,7 +533,14 @@ class IslandService : AccessibilityService() {
     private fun dp(v: Int): Int =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt()
 
+    private val outlineAuto by lazy {
+        OutlineAuto(this) {
+            if (touchParams.width > 1 && touchParams.x >= 0) android.graphics.Rect(touchParams.x, touchParams.y, touchParams.x + touchParams.width, touchParams.y + touchParams.height) else null
+        }
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        outlineAuto.onEvent()
         when (event?.eventType) {
             AccessibilityEvent.TYPE_WINDOWS_CHANGED -> onWindowsChanged()
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> onWindowState(event)

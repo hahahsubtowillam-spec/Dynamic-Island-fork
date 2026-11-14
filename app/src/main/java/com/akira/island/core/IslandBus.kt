@@ -62,6 +62,7 @@ object IslandBus {
     val offSchedule = MutableStateFlow(false)
     /** Экран включён. Пока он погашен, датчик наклона и чтение экрана навигатора не работают — бережём батарею */
     val screenOn = MutableStateFlow(true)
+    val outlineBlend = MutableStateFlow(false)
     /** Включено энергосбережение Android — с «Экономией заряда» остров без живых эффектов */
     val powerSave = MutableStateFlow(false)
     /** Телефон заблокирован PIN-кодом, графическим ключом или паролем: тексты сообщений и кнопки скрыты */

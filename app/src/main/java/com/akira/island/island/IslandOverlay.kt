@@ -555,7 +555,7 @@ private fun IslandBody(
             .then(
                 when {
                     calibrating -> Modifier.border(2.dp, Color.White, shape)
-                    s.outline -> Modifier.border(s.outlineWidth.dp, outlineColor, shape)
+                    outlineOn(s.outline, s.outlineAuto) -> Modifier.border(s.outlineWidth.dp, outlineColor, shape)
                     else -> Modifier
                 },
             )
@@ -832,7 +832,7 @@ private fun Bubble(act: Act, s: IslandSettings) {
                 if (s.liquidGlass) Modifier.glassSurface(CircleShape, Color(s.color), s.glassOpacity / 100f, tilt = { tilt.value })
                 else Modifier.background(Color(s.color)),
             )
-            .then(if (s.outline) Modifier.border(s.outlineWidth.dp, Color(s.outlineColor), CircleShape) else Modifier)
+            .then(if (outlineOn(s.outline, s.outlineAuto)) Modifier.border(s.outlineWidth.dp, Color(s.outlineColor), CircleShape) else Modifier)
             .clickable {
                 haptic()
                 Controls.expand(act.id)
@@ -915,4 +915,12 @@ fun islandShape(corner: Dp, notch: Boolean): RoundedCornerShape =
 private class AnimatedIslandShape(private val corner: State<Dp>, private val notch: Boolean) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
         islandShape(corner.value, notch).createOutline(size, layoutDirection, density)
+}
+
+
+/** Контур рисуется, если он включён вручную или если автоконтур включён и остров сейчас сливается с фоном. */
+@androidx.compose.runtime.Composable
+private fun outlineOn(manual: Boolean, auto: Boolean): Boolean {
+    val blend = com.akira.island.core.IslandBus.outlineBlend.collectAsState().value
+    return manual || (auto && blend)
 }
