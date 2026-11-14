@@ -1,5 +1,6 @@
 package com.akira.island.service
 
+import kotlin.math.roundToInt
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.app.KeyguardManager
@@ -373,7 +374,7 @@ class IslandService : AccessibilityService() {
         // и без того ждут экрана
         owner.setActive(visible)
         if (!visible) Controls.collapse()
-        val y = dp(s.topOffset - ISLAND_PAD_DP)
+        val y = if (s.notch) (-ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt() else dp(s.topOffset - ISLAND_PAD_DP)
         if (displayParams.y != y) {
             displayParams.y = y
             display?.let { v -> runCatching { wm?.updateViewLayout(v, displayParams) } }
