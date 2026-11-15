@@ -365,8 +365,13 @@ class IslandService : AccessibilityService() {
         list.isEmpty() || list.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
     }.getOrDefault(true)
 
+    private fun landCutout(): android.graphics.Rect? = runCatching {
+        val c = display?.rootWindowInsets?.displayCutout ?: wm?.currentWindowMetrics?.windowInsets?.displayCutout
+        c?.boundingRects?.maxByOrNull { it.width() * it.height() }
+    }.getOrNull()
+
     private fun applySettings(s: IslandSettings, landscape: Boolean) {
-        visible = s.enabled && !(s.hideInLandscape && landscape) && !IslandBus.offSchedule.value
+        visible = s.enabled && !(s.hideInLandscape && !s.landscapeDock && landscape) && !IslandBus.offSchedule.value
         display?.visibility = if (visible) View.VISIBLE else View.GONE
         // Остров спрятан — выключен, вне расписания или в повороте (скажем, смотрят видео): Compose в его окне
         // не рисует и не просыпается ради анимаций и эквалайзера, пока остров снова не покажется. С погашенным
@@ -374,7 +379,11 @@ class IslandService : AccessibilityService() {
         // и без того ждут экрана
         owner.setActive(visible)
         if (!visible) Controls.collapse()
-        val y = if (s.notch) (-ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt() else dp(s.topOffset - ISLAND_PAD_DP)
+        val cut = if (s.landscapeDock && landscape) landCutout() else null
+        val dock = if (cut == null) 0 else if (cut.left <= 1) -1 else 1
+        if (IslandBus.landDock.value != dock) IslandBus.landDock.value = dock
+        val y = if (cut != null) cut.top - (ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt()
+        else if (s.notch) (-ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt() else dp(s.topOffset - ISLAND_PAD_DP)
         if (displayParams.y != y) {
             displayParams.y = y
             display?.let { v -> runCatching { wm?.updateViewLayout(v, displayParams) } }
@@ -634,6 +643,7 @@ class IslandService : AccessibilityService() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         IslandBus.landscape.value = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE
+        handler.postDelayed({ applySettings(SettingsRepo.current, IslandBus.landscape.value) }, 400)
     }
 
     override fun onDestroy() {

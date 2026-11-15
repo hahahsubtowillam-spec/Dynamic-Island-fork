@@ -174,6 +174,9 @@ fun BehaviorScreen(onBack: () -> Unit) {
             GroupToggle(Pos.Middle, Icons.Rounded.ScreenRotation, tr("Скрывать в альбомной ориентации", "Hide in landscape"),
                 tr("Не мешает играм и видео", "Stays out of games and videos"),
                 s.hideInLandscape, color = Tile.Gray) { v -> SettingsRepo.update { copy(hideInLandscape = v) } }
+            GroupToggle(Pos.Middle, Icons.Rounded.ScreenRotation, tr("Остров у камеры в альбомной", "Dock to camera in landscape"),
+                tr("В альбомной ориентации остров стоит у камеры; заменяет «Скрывать»", "In landscape the island sits at the camera side; overrides Hide in landscape"),
+                s.landscapeDock, color = Tile.Blue) { v -> SettingsRepo.update { copy(landscapeDock = v) } }
             GroupToggle(Pos.Last, Icons.Rounded.Apps, tr("Прятать плеер в его приложении", "Hide the player in its own app"),
                 tr("Карточка музыки не показывается, пока открыт сам плеер", "The music card hides while the player itself is open"),
                 s.hideWhenPlayerOpen, color = Tile.Blue) { v -> SettingsRepo.update { copy(hideWhenPlayerOpen = v) } }

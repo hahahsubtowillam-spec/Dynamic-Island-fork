@@ -375,7 +375,7 @@ private fun IslandRow(
                 val p = measurable.measure(constraints)
                 layout(p.width, p.height) {
                     val room = ((constraints.maxWidth - p.width) / 2).coerceAtLeast(0)
-                    p.place(s.offsetX.dp.roundToPx().coerceIn(-room, room), 0)
+                    p.place((com.akira.island.core.IslandBus.landDock.value.let { d -> if (d != 0) d * 100000f else s.offsetX.toFloat() }).dp.roundToPx().coerceIn(-room, room), 0)
                 }
             }
             .wrapContentSize(Alignment.TopCenter, unbounded = true)

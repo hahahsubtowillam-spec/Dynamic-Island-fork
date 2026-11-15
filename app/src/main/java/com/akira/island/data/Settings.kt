@@ -243,6 +243,7 @@ data class IslandSettings(
     // Поведение
     val hideIdle: Boolean = false,
     val hideInLandscape: Boolean = true,
+    val landscapeDock: Boolean = false,
     val hideWhenPlayerOpen: Boolean = true,
     /** «По расписанию»: остров виден только с [scheduleFrom] до [scheduleTo] часов (можно через полночь) */
     val scheduleOn: Boolean = false,
