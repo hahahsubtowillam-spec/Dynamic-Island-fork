@@ -33,7 +33,9 @@ class OutlineAuto(private val service: AccessibilityService, private val bounds:
 
     private fun sample() {
         android.util.Log.d("OutlineAuto", "sample busy=" + busy)
-        if (busy || !SettingsRepo.current.outlineAuto || !IslandBus.screenOn.value) return
+        if (busy && SystemClock.elapsedRealtime() - last < 3000L) return
+        if (busy) android.util.Log.d("OutlineAuto", "watchdog: previous screenshot lost, resetting")
+        if (!SettingsRepo.current.outlineAuto || !IslandBus.screenOn.value) return
         busy = true
         last = SystemClock.elapsedRealtime()
         val started = runCatching {

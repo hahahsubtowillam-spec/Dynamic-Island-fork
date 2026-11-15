@@ -41,6 +41,11 @@ class AlarmMonitor(private val context: Context) {
         IslandBus.nextAlarm.value = null
     }
 
+    private fun isScheduleEvent(a: AlarmManager.AlarmClockInfo): Boolean {
+        val pi = a.showIntent ?: return false
+        return android.os.Build.VERSION.SDK_INT >= 31 && pi.isBroadcast && pi.creatorPackage == "com.sec.android.app.clockpackage"
+    }
+
     private fun refresh(announce: Boolean) {
         val info = runCatching { alarms?.nextAlarmClock }.getOrNull()
         runCatching {
@@ -52,7 +57,7 @@ class AlarmMonitor(private val context: Context) {
                 " isActivity=" + (if (api31) si?.isActivity else null) + " isBroadcast=" + (if (api31) si?.isBroadcast else null) +
                 " pi=" + si + " filterPass=" + si?.creatorPackage?.let { ClockApps.isAlarmApp(context, it) })
         }.onFailure { android.util.Log.d("AlarmDiag", "diag threw " + it) }
-        val next = info?.takeIf { a -> a.showIntent?.creatorPackage?.let { ClockApps.isAlarmApp(context, it) } == true }
+        val next = info?.takeIf { a -> a.showIntent?.creatorPackage?.let { ClockApps.isAlarmApp(context, it) } == true && !isScheduleEvent(a) }
             ?.let { AlarmInfo(it.triggerTime, it.showIntent?.creatorPackage, it.showIntent) }
         val prev = IslandBus.nextAlarm.value
         IslandBus.nextAlarm.value = next
