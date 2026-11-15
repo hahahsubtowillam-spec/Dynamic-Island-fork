@@ -59,6 +59,9 @@ object IslandBus {
     val foregroundPackage = MutableStateFlow<String?>(null)
     val landscape = MutableStateFlow(false)
     val landDock = MutableStateFlow(0)
+    val landDockState = androidx.compose.runtime.mutableStateOf(0)
+    val landCenterY = androidx.compose.runtime.mutableStateOf(0)
+    val landScreenH = androidx.compose.runtime.mutableStateOf(0)
     /** Вне часов «По расписанию» остров не показывается */
     val offSchedule = MutableStateFlow(false)
     /** Экран включён. Пока он погашен, датчик наклона и чтение экрана навигатора не работают — бережём батарею */

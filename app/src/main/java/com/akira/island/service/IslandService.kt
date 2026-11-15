@@ -366,7 +366,7 @@ class IslandService : AccessibilityService() {
     }.getOrDefault(true)
 
     private fun landCutout(): android.graphics.Rect? = runCatching {
-        val c = display?.rootWindowInsets?.displayCutout ?: wm?.currentWindowMetrics?.windowInsets?.displayCutout
+        val c = wm?.currentWindowMetrics?.windowInsets?.displayCutout ?: display?.rootWindowInsets?.displayCutout
         c?.boundingRects?.maxByOrNull { it.width() * it.height() }
     }.getOrNull()
 
@@ -392,28 +392,29 @@ class IslandService : AccessibilityService() {
         if (!visible) Controls.collapse()
         val side = if (s.landscapeDock && landscape) dockSide() else 0
         if (IslandBus.landDock.value != side) IslandBus.landDock.value = side
+        if (IslandBus.landDockState.value != side) IslandBus.landDockState.value = side
         val bounds = wm?.currentWindowMetrics?.bounds
         val pad = (ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt()
-        val y = if (side != 0) 0 else if (s.notch) (-ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt() else dp(s.topOffset - ISLAND_PAD_DP)
         var changed = false
         if (side != 0 && bounds != null) {
-            val dw = tallHeight()
-            val dx = if (side < 0) -pad else bounds.width() - dw + pad
-            if (displayParams.width != dw || displayParams.height != bounds.height() || displayParams.x != dx) {
+            val cut = landCutout()
+            IslandBus.landCenterY.value = if (cut != null) (cut.top + cut.bottom) / 2 else bounds.height() / 2
+            IslandBus.landScreenH.value = bounds.height()
+            val dw = bounds.width() + 2 * pad
+            if (displayParams.width != dw || displayParams.x != -pad) {
                 displayParams.width = dw
-                displayParams.height = bounds.height()
-                displayParams.x = dx
+                displayParams.x = -pad
                 changed = true
             }
         } else if (dockApplied != 0) {
             displayParams.width = WindowManager.LayoutParams.MATCH_PARENT
             displayParams.x = 0
-            displayParams.height = tallHeight()
             changed = true
         }
         dockApplied = if (side != 0 && bounds != null) side else 0
-        if (dockApplied == 0 && changed) updateDisplayHeight()
+        val y = if (dockApplied != 0) 0 else if (s.notch) (-ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt() else dp(s.topOffset - ISLAND_PAD_DP)
         if (displayParams.y != y || changed) {
+
 
             displayParams.y = y
             display?.let { v -> runCatching { wm?.updateViewLayout(v, displayParams) } }
@@ -471,7 +472,6 @@ class IslandService : AccessibilityService() {
 
     /** Меняется только высота окна, верх остаётся на месте — картинка при этом не прыгает. */
     private fun updateDisplayHeight() {
-        if (dockApplied != 0) return
         val view = display ?: return
         val h = if (tall || fxTall || IslandBus.expanded.value) tallHeight() else islandBottom().coerceAtLeast(dp(ISLAND_PAD_DP * 2))
         if (displayParams.height == h) return

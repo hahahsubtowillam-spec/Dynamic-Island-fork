@@ -332,7 +332,7 @@ fun IslandOverlay(
     val eggOn = egg && !calibrating
 
     // Остров меряется по своему размеру, а не по окну, и стоит сверху по центру окна
-    Box(Modifier.dockRotate(com.akira.island.core.IslandBus.landDock.collectAsState().value).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         // Оплата: волны NFC и вспышка успеха вокруг острова, как в ролике
         if (!calibrating) PayEffects(primary, { body.value }, s)
         // Пасхалка: свечение за островом, вспышки и звёзды поверх
@@ -375,7 +375,16 @@ private fun IslandRow(
                 val p = measurable.measure(constraints)
                 layout(p.width, p.height) {
                     val room = ((constraints.maxWidth - p.width) / 2).coerceAtLeast(0)
-                    p.place((if (com.akira.island.core.IslandBus.landDock.value != 0) 0f else s.offsetX.toFloat()).dp.roundToPx().coerceIn(-room, room), 0)
+                    val dockSide = com.akira.island.core.IslandBus.landDockState.value
+                    if (dockSide != 0) {
+                        val sh = com.akira.island.core.IslandBus.landScreenH.value
+                        val cy = com.akira.island.core.IslandBus.landCenterY.value
+                        val top = if (sh > 0) (cy - p.height / 2).coerceIn(0, (sh - p.height).coerceAtLeast(0)) else 0
+                        p.place(dockSide * room, top)
+                    } else {
+                        p.place(s.offsetX.dp.roundToPx().coerceIn(-room, room), 0)
+                    }
+
                 }
             }
             .wrapContentSize(Alignment.TopCenter, unbounded = true)
