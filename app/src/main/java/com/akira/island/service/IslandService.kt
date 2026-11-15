@@ -382,9 +382,19 @@ class IslandService : AccessibilityService() {
         val cut = if (s.landscapeDock && landscape) landCutout() else null
         val dock = if (cut == null) 0 else if (cut.left <= 1) -1 else 1
         if (IslandBus.landDock.value != dock) IslandBus.landDock.value = dock
+        val navIn = if (cut != null) runCatching { wm?.currentWindowMetrics?.windowInsets?.getInsets(android.view.WindowInsets.Type.navigationBars()) }.getOrNull() else null
+        val screenW = if (cut != null) runCatching { wm?.currentWindowMetrics?.bounds?.width() }.getOrNull() else null
+        val nx = navIn?.left ?: 0
+        val nw = if (navIn != null && screenW != null) (screenW - navIn.left - navIn.right).coerceAtLeast(1) else WindowManager.LayoutParams.MATCH_PARENT
+        var navChanged = false
+        if (displayParams.x != nx || displayParams.width != nw) {
+            displayParams.x = nx
+            displayParams.width = nw
+            navChanged = true
+        }
         val y = if (cut != null) cut.top - (ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt()
         else if (s.notch) (-ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt() else dp(s.topOffset - ISLAND_PAD_DP)
-        if (displayParams.y != y) {
+        if (displayParams.y != y || navChanged) {
             displayParams.y = y
             display?.let { v -> runCatching { wm?.updateViewLayout(v, displayParams) } }
         }
