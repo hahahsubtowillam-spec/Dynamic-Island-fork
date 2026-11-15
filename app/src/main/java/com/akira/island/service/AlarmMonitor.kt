@@ -43,6 +43,15 @@ class AlarmMonitor(private val context: Context) {
 
     private fun refresh(announce: Boolean) {
         val info = runCatching { alarms?.nextAlarmClock }.getOrNull()
+        runCatching {
+            val si = info?.showIntent
+            val api31 = android.os.Build.VERSION.SDK_INT >= 31
+            android.util.Log.d("AlarmDiag", "refresh announce=" + announce + " info=" + (info != null) +
+                " trigger=" + info?.triggerTime + " date=" + info?.triggerTime?.let { java.util.Date(it).toString() } +
+                " creatorPkg=" + si?.creatorPackage + " creatorUid=" + si?.creatorUid +
+                " isActivity=" + (if (api31) si?.isActivity else null) + " isBroadcast=" + (if (api31) si?.isBroadcast else null) +
+                " pi=" + si + " filterPass=" + si?.creatorPackage?.let { ClockApps.isAlarmApp(context, it) })
+        }.onFailure { android.util.Log.d("AlarmDiag", "diag threw " + it) }
         val next = info?.takeIf { a -> a.showIntent?.creatorPackage?.let { ClockApps.isAlarmApp(context, it) } == true }
             ?.let { AlarmInfo(it.triggerTime, it.showIntent?.creatorPackage, it.showIntent) }
         val prev = IslandBus.nextAlarm.value
