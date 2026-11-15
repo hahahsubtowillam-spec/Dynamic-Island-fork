@@ -21,6 +21,7 @@ class OutlineAuto(private val service: AccessibilityService, private val bounds:
     private var busy = false
 
     fun onEvent() {
+        android.util.Log.d("OutlineAuto", "event auto=" + SettingsRepo.current.outlineAuto + " screenOn=" + IslandBus.screenOn.value + " sdk=" + Build.VERSION.SDK_INT)
         if (!SettingsRepo.current.outlineAuto) {
             if (IslandBus.outlineBlend.value) IslandBus.outlineBlend.value = false
             return
@@ -31,12 +32,14 @@ class OutlineAuto(private val service: AccessibilityService, private val bounds:
     }
 
     private fun sample() {
+        android.util.Log.d("OutlineAuto", "sample busy=" + busy)
         if (busy || !SettingsRepo.current.outlineAuto || !IslandBus.screenOn.value) return
         busy = true
         last = SystemClock.elapsedRealtime()
         val started = runCatching {
             service.takeScreenshot(Display.DEFAULT_DISPLAY, service.mainExecutor, object : AccessibilityService.TakeScreenshotCallback {
                 override fun onSuccess(result: AccessibilityService.ScreenshotResult) {
+                    android.util.Log.d("OutlineAuto", "screenshot ok")
                     val buffer = result.hardwareBuffer
                     runCatching {
                         val hw = Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
@@ -52,10 +55,11 @@ class OutlineAuto(private val service: AccessibilityService, private val bounds:
                 }
 
                 override fun onFailure(errorCode: Int) {
+                    android.util.Log.d("OutlineAuto", "screenshot failed code=" + errorCode)
                     busy = false
                 }
             })
-        }.isSuccess
+        }.onFailure { android.util.Log.d("OutlineAuto", "takeScreenshot threw " + it) }.isSuccess
         if (!started) busy = false
     }
 
@@ -96,6 +100,7 @@ class OutlineAuto(private val service: AccessibilityService, private val bounds:
         val dg = g / n - ((c shr 8) and 255)
         val db = b / n - (c and 255)
         val dist = sqrt((dr * dr + dg * dg + db * db).toDouble())
+        android.util.Log.d("OutlineAuto", "decide cap=" + cap + " dist=" + dist + " color=" + Integer.toHexString(c))
         val now = IslandBus.outlineBlend.value
         val next = when {
             dist < 36 -> true
