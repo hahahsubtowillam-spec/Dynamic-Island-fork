@@ -332,7 +332,7 @@ fun IslandOverlay(
     val eggOn = egg && !calibrating
 
     // Остров меряется по своему размеру, а не по окну, и стоит сверху по центру окна
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    Box(Modifier.dockRotate(com.akira.island.core.IslandBus.landDock.collectAsState().value).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         // Оплата: волны NFC и вспышка успеха вокруг острова, как в ролике
         if (!calibrating) PayEffects(primary, { body.value }, s)
         // Пасхалка: свечение за островом, вспышки и звёзды поверх
@@ -375,7 +375,7 @@ private fun IslandRow(
                 val p = measurable.measure(constraints)
                 layout(p.width, p.height) {
                     val room = ((constraints.maxWidth - p.width) / 2).coerceAtLeast(0)
-                    p.place((com.akira.island.core.IslandBus.landDock.value.let { d -> if (d != 0) d * 100000f else s.offsetX.toFloat() }).dp.roundToPx().coerceIn(-room, room), 0)
+                    p.place((if (com.akira.island.core.IslandBus.landDock.value != 0) 0f else s.offsetX.toFloat()).dp.roundToPx().coerceIn(-room, room), 0)
                 }
             }
             .wrapContentSize(Alignment.TopCenter, unbounded = true)
@@ -923,4 +923,26 @@ private class AnimatedIslandShape(private val corner: State<Dp>, private val not
 private fun outlineOn(manual: Boolean, auto: Boolean): Boolean {
     val blend = com.akira.island.core.IslandBus.outlineBlend.collectAsState().value
     return manual || (auto && blend)
+}
+
+/** Landscape dock: rotate the whole island so its top faces the camera edge. dock: -1 left, 1 right. */
+private fun Modifier.dockRotate(dock: Int): Modifier = if (dock == 0) this else this.layout { measurable, constraints ->
+    val swapped = androidx.compose.ui.unit.Constraints(
+        minWidth = constraints.minHeight, maxWidth = constraints.maxHeight,
+        minHeight = constraints.minWidth, maxHeight = constraints.maxWidth,
+    )
+    val p = measurable.measure(swapped)
+    layout(p.height, p.width) {
+        if (dock > 0) {
+            p.placeWithLayer(p.height, 0) {
+                rotationZ = 90f
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+            }
+        } else {
+            p.placeWithLayer(0, p.width) {
+                rotationZ = -90f
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+            }
+        }
+    }
 }

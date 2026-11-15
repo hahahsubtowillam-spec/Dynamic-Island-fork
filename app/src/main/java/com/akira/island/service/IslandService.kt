@@ -370,7 +370,18 @@ class IslandService : AccessibilityService() {
         c?.boundingRects?.maxByOrNull { it.width() * it.height() }
     }.getOrNull()
 
+    private var dockApplied = 0
+
+    /** Landscape: rotated left means the camera is on the left, rotated right means on the right. */
+    @Suppress("DEPRECATION")
+    private fun dockSide(): Int = when ((getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
+        android.view.Surface.ROTATION_90 -> -1
+        android.view.Surface.ROTATION_270 -> 1
+        else -> 0
+    }
+
     private fun applySettings(s: IslandSettings, landscape: Boolean) {
+
         visible = s.enabled && !(s.hideInLandscape && !s.landscapeDock && landscape) && !IslandBus.offSchedule.value
         display?.visibility = if (visible) View.VISIBLE else View.GONE
         // Остров спрятан — выключен, вне расписания или в повороте (скажем, смотрят видео): Compose в его окне
@@ -379,22 +390,31 @@ class IslandService : AccessibilityService() {
         // и без того ждут экрана
         owner.setActive(visible)
         if (!visible) Controls.collapse()
-        val cut = if (s.landscapeDock && landscape) landCutout() else null
-        val dock = if (cut == null) 0 else if (cut.left <= 1) -1 else 1
-        if (IslandBus.landDock.value != dock) IslandBus.landDock.value = dock
-        val navIn = if (cut != null) runCatching { wm?.currentWindowMetrics?.windowInsets?.getInsets(android.view.WindowInsets.Type.navigationBars()) }.getOrNull() else null
-        val screenW = if (cut != null) runCatching { wm?.currentWindowMetrics?.bounds?.width() }.getOrNull() else null
-        val nx = navIn?.left ?: 0
-        val nw = if (navIn != null && screenW != null) (screenW - navIn.left - navIn.right).coerceAtLeast(1) else WindowManager.LayoutParams.MATCH_PARENT
-        var navChanged = false
-        if (displayParams.x != nx || displayParams.width != nw) {
-            displayParams.x = nx
-            displayParams.width = nw
-            navChanged = true
+        val side = if (s.landscapeDock && landscape) dockSide() else 0
+        if (IslandBus.landDock.value != side) IslandBus.landDock.value = side
+        val bounds = wm?.currentWindowMetrics?.bounds
+        val pad = (ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt()
+        val y = if (side != 0) 0 else if (s.notch) (-ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt() else dp(s.topOffset - ISLAND_PAD_DP)
+        var changed = false
+        if (side != 0 && bounds != null) {
+            val dw = tallHeight()
+            val dx = if (side < 0) -pad else bounds.width() - dw + pad
+            if (displayParams.width != dw || displayParams.height != bounds.height() || displayParams.x != dx) {
+                displayParams.width = dw
+                displayParams.height = bounds.height()
+                displayParams.x = dx
+                changed = true
+            }
+        } else if (dockApplied != 0) {
+            displayParams.width = WindowManager.LayoutParams.MATCH_PARENT
+            displayParams.x = 0
+            displayParams.height = tallHeight()
+            changed = true
         }
-        val y = if (cut != null) cut.top - (ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt()
-        else if (s.notch) (-ISLAND_PAD_DP * resources.displayMetrics.density).roundToInt() else dp(s.topOffset - ISLAND_PAD_DP)
-        if (displayParams.y != y || navChanged) {
+        dockApplied = if (side != 0 && bounds != null) side else 0
+        if (dockApplied == 0 && changed) updateDisplayHeight()
+        if (displayParams.y != y || changed) {
+
             displayParams.y = y
             display?.let { v -> runCatching { wm?.updateViewLayout(v, displayParams) } }
         }
@@ -451,6 +471,7 @@ class IslandService : AccessibilityService() {
 
     /** Меняется только высота окна, верх остаётся на месте — картинка при этом не прыгает. */
     private fun updateDisplayHeight() {
+        if (dockApplied != 0) return
         val view = display ?: return
         val h = if (tall || fxTall || IslandBus.expanded.value) tallHeight() else islandBottom().coerceAtLeast(dp(ISLAND_PAD_DP * 2))
         if (displayParams.height == h) return
