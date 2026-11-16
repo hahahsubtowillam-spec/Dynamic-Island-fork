@@ -367,6 +367,17 @@ private fun IslandRow(
     onBodyBounds: (Rect) -> Unit,
     onBubbleBounds: (Rect) -> Unit,
 ) {
+    // Landscape dock: the island swings a quarter turn into place, the direction follows which way the phone was turned
+    val dockNow = com.akira.island.core.IslandBus.landDockState.value
+    val dockRot = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(dockNow) {
+        if (dockNow == 0) {
+            dockRot.snapTo(0f)
+        } else {
+            dockRot.snapTo(if (dockNow < 0) 90f else -90f)
+            dockRot.animateTo(0f, androidx.compose.animation.core.tween(380, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+        }
+    }
     Row(
         Modifier
             // Сдвиг вбок — для камеры не по центру. Широкие плашки и раскрытый остров при этом не уезжают
@@ -380,7 +391,7 @@ private fun IslandRow(
                         val sh = com.akira.island.core.IslandBus.landScreenH.value
                         val cy = com.akira.island.core.IslandBus.landCenterY.value
                         val top = if (sh > 0) (cy - p.height / 2).coerceIn(0, (sh - p.height).coerceAtLeast(0)) else 0
-                        p.place(dockSide * room, top)
+                        p.placeWithLayer(dockSide * room, top) { rotationZ = dockRot.value }
                     } else {
                         p.place(s.offsetX.dp.roundToPx().coerceIn(-room, room), 0)
                     }
