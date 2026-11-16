@@ -177,6 +177,7 @@ class IslandService : AccessibilityService() {
         super.onServiceConnected()
         SettingsRepo.init(this)
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        runCatching { getSystemService(android.hardware.display.DisplayManager::class.java)?.registerDisplayListener(rotationListener, handler) }
         IslandBus.landscape.value = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
         createWindows()
@@ -674,6 +675,17 @@ class IslandService : AccessibilityService() {
 
     override fun onInterrupt() = Unit
 
+    /** Flipping straight from one landscape to the other changes no configuration, so the dock side is re-checked on display changes. */
+    private val rotationListener = object : android.hardware.display.DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) = Unit
+        override fun onDisplayRemoved(displayId: Int) = Unit
+        override fun onDisplayChanged(displayId: Int) {
+            if (SettingsRepo.current.landscapeDock && IslandBus.landscape.value && dockSide() != IslandBus.landDockState.value) {
+                handler.postDelayed({ applySettings(SettingsRepo.current, IslandBus.landscape.value) }, 300)
+            }
+        }
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         IslandBus.landscape.value = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -681,6 +693,7 @@ class IslandService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        runCatching { getSystemService(android.hardware.display.DisplayManager::class.java)?.unregisterDisplayListener(rotationListener) }
         // Остров выключили в спец. возможностях — держать его процесс больше незачем
         stopService(Intent(this, KeepAliveService::class.java))
         handler.removeCallbacks(shoot)
