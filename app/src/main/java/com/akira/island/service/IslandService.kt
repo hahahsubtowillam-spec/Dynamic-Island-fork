@@ -401,13 +401,15 @@ class IslandService : AccessibilityService() {
             IslandBus.landCenterY.value = if (cut != null) (cut.top + cut.bottom) / 2 else bounds.height() / 2
             IslandBus.landScreenH.value = bounds.height()
             val dw = bounds.width() + 2 * pad
-            if (displayParams.width != dw || displayParams.x != -pad) {
+            if (displayParams.width != dw || displayParams.x != -pad || displayParams.height != bounds.height()) {
                 displayParams.width = dw
+                displayParams.height = bounds.height()
                 displayParams.x = -pad
                 changed = true
             }
         } else if (dockApplied != 0) {
             displayParams.width = WindowManager.LayoutParams.MATCH_PARENT
+            displayParams.height = tallHeight()
             displayParams.x = 0
             changed = true
         }
@@ -472,6 +474,7 @@ class IslandService : AccessibilityService() {
 
     /** Меняется только высота окна, верх остаётся на месте — картинка при этом не прыгает. */
     private fun updateDisplayHeight() {
+        if (dockApplied != 0) return
         val view = display ?: return
         val h = if (tall || fxTall || IslandBus.expanded.value) tallHeight() else islandBottom().coerceAtLeast(dp(ISLAND_PAD_DP * 2))
         if (displayParams.height == h) return
