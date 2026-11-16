@@ -448,7 +448,7 @@ private fun IslandBody(
     val scope = rememberCoroutineScope()
     val conf = LocalConfiguration.current
     // Раскрытый остров iPhone — 371 pt при ширине экрана 393 pt, то есть по 11 с каждой стороны
-    val expandedWidth = (conf.screenWidthDp.dp - 22.dp).coerceAtMost(460.dp)
+    val expandedWidth = (minOf(conf.screenWidthDp, conf.screenHeightDp).dp - 22.dp).coerceAtMost(460.dp)
     val h = s.height.dp
 
     // Скругления — как в ролике: плеер и фонарик 46, навигатор 42, обновление 36, уведомление 32
